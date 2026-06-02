@@ -62,7 +62,7 @@ app.post('/api/chat', async (req, res) => {
         const response = await axios.post(
             'https://openrouter.ai/api/v1/chat/completions',
             {
-                model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+                model: "google/gemma-4-26b-a4b-it:free",
                 messages: [
                     {
                         role: 'system',
