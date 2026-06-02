@@ -63,6 +63,7 @@ app.post('/api/chat', async (req, res) => {
             'https://openrouter.ai/api/v1/chat/completions',
             {
                 model: "google/gemma-4-26b-a4b-it:free",
+                
                 messages: [
                     {
                         role: 'system',
