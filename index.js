@@ -47,7 +47,7 @@ app.post('/api/chat', async (req, res) => {
         const response = await axios.post(
             'https://openrouter.ai/api/v1/chat/completions',
             {
-                model: 'openai/gpt-4o-mini', // 🔥 مجاني ويشتغل
+                model: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free', // 🔥 مجاني ويشتغل
                 messages: [
                     {
                         role: 'system',
