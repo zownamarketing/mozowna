@@ -47,7 +47,7 @@ app.post('/api/chat', async (req, res) => {
         const response = await axios.post(
             'https://openrouter.ai/api/v1/chat/completions',
             {
-                model: 'gryphe/mythomax-l2-13b:free', // 🔥 مجاني ويشتغل
+                model: 'openai/gpt-4o-mini', // 🔥 مجاني ويشتغل
                 messages: [
                     {
                         role: 'system',
