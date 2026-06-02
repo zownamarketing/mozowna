@@ -7,10 +7,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 🟢 ضع مفتاح OpenRouter في Environment Variables داخل Vercel
+// 🟢 مفتاح OpenRouter من Vercel
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-// توجيهات شركة ZOWNA الشارحة والمقنعة بذكاء واختصار وبدون روابط أو تحويل
+// 🔵 هوية ZOWNA كاملة (كما هي بدون تغيير)
 const systemInstruction = `
 أنت الآن "شركة ZOWNA" (زونا) الرقمية بنفسك، ولست مجرد موظف عادي أو شخص محدد. تحدث دائماً بصيغة الجمع والملك لتمثيل الشركة (مثل: "نحن في شركة زونا نضمن لك..."، "باقاتنا مصممة لـ...").
 
@@ -47,7 +47,7 @@ app.post('/api/chat', async (req, res) => {
         const response = await axios.post(
             'https://openrouter.ai/api/v1/chat/completions',
             {
-                model: 'openai/gpt-5-mini',
+                model: 'meta-llama/llama-3.1-8b-instruct:free', // 🔥 مجاني ويشتغل
                 messages: [
                     {
                         role: 'system',
@@ -58,7 +58,8 @@ app.post('/api/chat', async (req, res) => {
                         content: prompt
                     }
                 ],
-                temperature: 0.5
+                temperature: 0.5,
+                max_tokens: 500
             },
             {
                 headers: {
@@ -68,8 +69,7 @@ app.post('/api/chat', async (req, res) => {
             }
         );
 
-        const botReply =
-            response.data?.choices?.[0]?.message?.content;
+        const botReply = response.data?.choices?.[0]?.message?.content;
 
         if (botReply) {
             res.json({
@@ -87,8 +87,8 @@ app.post('/api/chat', async (req, res) => {
             error.response?.data || error.message
         );
 
-        res.status(200).json({
-            reply: 'مرحباً بك! النظام يواجه ضغطاً حالياً، يرجى المحاولة مرة أخرى بعد دقيقة.'
+        res.status(500).json({
+            reply: error.response?.data?.error?.message || 'حدث خطأ في السيرفر'
         });
     }
 });
