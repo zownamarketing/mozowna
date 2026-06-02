@@ -1,118 +1,78 @@
 const express = require('express');
 const cors = require('cors');
-const axios = require('axios');
+const OpenAI = require('openai');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '10kb' }));
 
-// 🔐 API KEY
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+// 🔐 OpenAI API Key
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-// 🧠 System Prompt (حر + ZOWNA + طبيعي)
+// 🧠 System Prompt
 const systemInstruction = `
 أنت ذكاء اصطناعي حر وطبيعي جدًا تتكلم مثل إنسان ذكي وليس بوت.
-أنت مساعد لشركة ZOWNA لكن يمكنك التحدث بحرية في أي موضوع.
+أنت مساعد لشركة ZOWNA لكن يمكنك التحدث بحرية.
 
 قواعدك:
-- ردود طبيعية بدون قوالب جاهزة
-- لا تقول "لا أفهم" بشكل مباشر
-- إذا لم تفهم، اسأل سؤال واحد فقط
-- لا تتحول لبوت خدمة عملاء
-- كن ذكي، ساخر أحيانًا، ومختصر
+- ردود طبيعية بدون قوالب
+- لا تقول "لا أفهم"
+- كن ذكي ومختصر
+- أسلوب بشري طبيعي
 
 معلومات ZOWNA:
 شركة تسويق رقمي + تصميم مواقع + Branding + إعلانات
-الباقات:
-Basic 99 / Pro 199 / Branding 59
+الباقات: Basic 99 / Pro 199 / Branding 59
 المؤسس: مؤمن إسماعيل الرواضية
 `;
 
-// 🧼 تنظيف النص
 function cleanText(text) {
-    return String(text).replace(/\s+/g, ' ').trim();
-}
-
-// 🧠 تحسين بسيط للطلب
-function enhancePrompt(prompt) {
-    return prompt;
+  return String(text).replace(/\s+/g, ' ').trim();
 }
 
 // 🟢 Health check
 app.get('/', (req, res) => {
-    res.json({
-        status: "ZOWNA AI ONLINE 🚀",
-        model: "meta-llama-3.1-8b"
-    });
+  res.json({ status: "ZOWNA AI ONLINE 🚀" });
 });
 
 // 💬 Chat endpoint
 app.post('/api/chat', async (req, res) => {
-    try {
-        let { prompt } = req.body;
+  try {
+    const { prompt } = req.body;
 
-        if (!prompt || typeof prompt !== 'string') {
-            return res.status(400).json({
-                reply: "يرجى إرسال نص صحيح"
-            });
-        }
-
-        prompt = cleanText(prompt);
-
-        const response = await axios.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            {
-                model: "meta-llama/llama-3.1-8b-instruct:free",
-                messages: [
-                    {
-                        role: "system",
-                        content: systemInstruction
-                    },
-                    {
-                        role: "user",
-                        content: enhancePrompt(prompt)
-                    }
-                ],
-                temperature: 0.7,
-                max_tokens: 500
-            },
-            {
-                headers: {
-                    Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://zowna.ai",
-                    "X-Title": "ZOWNA AI"
-                },
-                timeout: 60000
-            }
-        );
-
-        const botReply = response.data?.choices?.[0]?.message?.content;
-
-        if (!botReply) {
-            return res.json({
-                reply: "نواجه ضغط بسيط الآن، حاول مرة ثانية 👌"
-            });
-        }
-
-        res.json({
-            reply: cleanText(botReply)
-        });
-
-    } catch (error) {
-        console.error("ZOWNA ERROR:", error.response?.data || error.message);
-
-        return res.status(200).json({
-            reply: "نواجه ضغط على النظام حالياً 🚀 حاول مرة ثانية بعد قليل"
-        });
+    if (!prompt) {
+      return res.json({ reply: "اكتب رسالة" });
     }
+
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.6,
+      max_tokens: 350,
+    });
+
+    const reply = response.choices?.[0]?.message?.content;
+
+    res.json({
+      reply: reply ? cleanText(reply) : "نواجه ضغط بسيط حالياً 🚀"
+    });
+
+  } catch (error) {
+    console.log(error);
+
+    res.json({
+      reply: "نواجه ضغط على النظام حالياً 🚀"
+    });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`ZOWNA AI Running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log("ZOWNA AI Running"));
 
 module.exports = app;
