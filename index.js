@@ -1,21 +1,21 @@
 const express = require('express');
 const cors = require('cors');
-const { GoogleGenAI } = require("@google/genai");
+const axios = require('axios');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// 🟢 تأكد أنك واضع الـ GEMINI_API_KEY في الـ Environment Variables في Vercel
-const ai = new GoogleGenAI({});
+// 🟢 ضع مفتاح OpenRouter في Environment Variables داخل Vercel
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 // توجيهات شركة ZOWNA الشارحة والمقنعة بذكاء واختصار وبدون روابط أو تحويل
 const systemInstruction = `
 أنت الآن "شركة ZOWNA" (زونا) الرقمية بنفسك، ولست مجرد موظف عادي أو شخص محدد. تحدث دائماً بصيغة الجمع والملك لتمثيل الشركة (مثل: "نحن في شركة زونا نضمن لك..."، "باقاتنا مصممة لـ...").
 
 قواعد الرد والشخصية:
-1. الأسلوب: ذكي، مبيعاتي، مقنع جداً، وبلحن عامي أردني/مكتبي خفيف (عامية بيضاء). 
+1. الأسلوب: ذكي، مبيعاتي، مقنع جداً، وبلحن عامي أردني/مكتبي خفيف (عامية بيضاء).
 2. حجم الرد: اجعل جوابك دائماً مختصراً، جميلاً، وفي صلب الموضوع (سطرين لثلاثة أسطر ذكية ومكثفة تفي بالغرض)، وتجنب الحشو الممل.
 3. التفاعل الكامل: تفلسف واشرح وأقنع العميل بمميزات خدماتنا وباقاتنا بذكاء، وممنوع تماماً أن تنهي الكلام بعبارات تحويلية مثل "تواصل معنا لتكمل باقي التفاصيل" أو "روح على السكشن الفلاني". خذ وأعطِ معه في الكلام كشركة ممتلئة بالثقة.
 
@@ -39,36 +39,62 @@ app.post('/api/chat', async (req, res) => {
         const { prompt } = req.body;
 
         if (!prompt) {
-            return res.status(400).json({ reply: 'الرجاء إرسال نص السؤال (prompt)' });
+            return res.status(400).json({
+                reply: 'الرجاء إرسال نص السؤال (prompt)'
+            });
         }
 
-        // 🟢 تصحيح اسم الموديل وطريقة تمرير الـ Config للمكتبة الحديثة
-        const response = await ai.models.generateContent({
-            model: "gemini-1.5-flash", 
-            contents: prompt,
-            config: {
-                systemInstruction: systemInstruction,
-                temperature: 0.5 
+        const response = await axios.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            {
+                model: 'openai/gpt-5-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemInstruction
+                    },
+                    {
+                        role: 'user',
+                        content: prompt
+                    }
+                ],
+                temperature: 0.5
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+                    'Content-Type': 'application/json'
+                }
             }
-        });
+        );
 
-        // 🟢 تصحيح جلب النص من الـ Response ليطابق مخرجات المكتبة ويقرأه الفرونت إيند فوراُ
-        const botReply = response.text || (response.candidates && response.candidates[0].content.parts[0].text);
+        const botReply =
+            response.data?.choices?.[0]?.message?.content;
 
         if (botReply) {
-            res.json({ reply: botReply.trim() });
+            res.json({
+                reply: botReply.trim()
+            });
         } else {
-            res.json({ reply: "مرحباً بك! نحن شركة زونا، واجهنا مشكلة صغيرة بقراءة طلبك، يرجى إعادة المحاولة." });
+            res.json({
+                reply: "مرحباً بك! نحن شركة زونا، واجهنا مشكلة صغيرة بقراءة طلبك، يرجى إعادة المحاولة."
+            });
         }
 
     } catch (error) {
-        console.error("Error with Gemini API:", error);
-        // نرد بـ reply حتى الفرونت إيند لا يظهر الخطأ القاتل بوجه الزبون
-        res.status(200).json({ reply: 'مرحباً بك! النظام يواجه ضغطاً حالياً، يرجى المحاولة مرة أخرى بعد دقيقة.' });
+        console.error(
+            "OpenRouter Error:",
+            error.response?.data || error.message
+        );
+
+        res.status(200).json({
+            reply: 'مرحباً بك! النظام يواجه ضغطاً حالياً، يرجى المحاولة مرة أخرى بعد دقيقة.'
+        });
     }
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
