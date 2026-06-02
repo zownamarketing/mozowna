@@ -7,6 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 🟢 تأكد أنك واضع الـ GEMINI_API_KEY في الـ Environment Variables في Vercel
 const ai = new GoogleGenAI({});
 
 // توجيهات شركة ZOWNA الشارحة والمقنعة بذكاء واختصار وبدون روابط أو تحويل
@@ -38,24 +39,32 @@ app.post('/api/chat', async (req, res) => {
         const { prompt } = req.body;
 
         if (!prompt) {
-            return res.status(400).json({ error: 'الرجاء إرسال نص السؤال (prompt)' });
+            return res.status(400).json({ reply: 'الرجاء إرسال نص السؤال (prompt)' });
         }
 
+        // 🟢 تصحيح اسم الموديل وطريقة تمرير الـ Config للمكتبة الحديثة
         const response = await ai.models.generateContent({
-            model: "gemini-3.5-flash",
+            model: "gemini-1.5-flash", 
             contents: prompt,
             config: {
                 systemInstruction: systemInstruction,
-                // تركنا المساحة مفتوحة بناءً على طلبك عشان ما يقطع الكلام نهائياً، والالتزام بالاختصار يعتمد على التوجيهات الصارمة فوق
                 temperature: 0.5 
             }
         });
 
-        res.json({ reply: response.text });
+        // 🟢 تصحيح جلب النص من الـ Response ليطابق مخرجات المكتبة ويقرأه الفرونت إيند فوراُ
+        const botReply = response.text || (response.candidates && response.candidates[0].content.parts[0].text);
+
+        if (botReply) {
+            res.json({ reply: botReply.trim() });
+        } else {
+            res.json({ reply: "مرحباً بك! نحن شركة زونا، واجهنا مشكلة صغيرة بقراءة طلبك، يرجى إعادة المحاولة." });
+        }
 
     } catch (error) {
         console.error("Error with Gemini API:", error);
-        res.status(500).json({ error: 'حدث خطأ في السيرفر أثناء الاتصال بـ Gemini' });
+        // نرد بـ reply حتى الفرونت إيند لا يظهر الخطأ القاتل بوجه الزبون
+        res.status(200).json({ reply: 'مرحباً بك! النظام يواجه ضغطاً حالياً، يرجى المحاولة مرة أخرى بعد دقيقة.' });
     }
 });
 
